@@ -1,0 +1,181 @@
+
+  function checkTrue(selection){
+     return selection == "true"
+     }
+var ss = SpreadsheetApp.getActiveSpreadsheet();
+var clientName = ss.getRange("B1").getValue();
+var date = Utilities.formatDate(new Date(),"GMT","yyyy-MM-dd" )
+
+function ingestProduct(){
+  var rows = SpreadsheetApp.getActiveSheet().getDataRange().getValues();
+  var ss = SpreadsheetApp.getActive();
+  var selectionRange = ss.getRange("Overview!A:A").getValues();
+  var check = selectionRange.some(checkTrue);
+ 
+  var folder = DriveApp.getFolderById("1VftCav6Xi0kfgquSVm1PFMIMa_LQn_6u") //ingestion log folder
+  var fugaOrg = ss.getRange("D1").getValue();
+  
+  var logInfo = ["filler",date,fugaOrg,clientName]
+  var fileName = date + " - " + fugaOrg + " " + "(" + clientName + ")"
+  if (check === true){
+    var copySheet = DriveApp.getFileById("1GuHzDAt9tOhL_rDKXxvxTrCUGpGAeJ8mQZWShoOS74c").makeCopy(fileName, folder);
+    var copyID = copySheet.getId();
+    var url = copySheet.getUrl();
+    logInfo.push(url);
+    var logSheet = SpreadsheetApp.openById("1SftHdbfH_vGSN6tgv7GSA-AGaqsAQp6N3231O0H0_Ro").getSheetByName("LOG")
+    var Avals = logSheet.getRange("A1:A").getValues();
+    var Alast = Avals.filter(String).length+1;
+    for(x=1;x<6;x++){ //why 6?? amend
+    var editLog = logSheet.getRange(Alast,x).setValue(logInfo[x])
+    }
+  }
+
+  var euCount = 0
+  Logger.log(euCount)
+  var headers = rows.shift();
+  rows.forEach(function(row) { //should shift two rows technically
+    if(row[0] === true) {
+   
+      var vendor = row[1]
+      var label = row[2]
+      var catalogNum = row[3]
+      var upc = row[4]
+      var artist = row[5]
+      var title = row[6]
+      var primaryGenre = row[7]
+      var secondGenre = row[8]
+      var format = row[9]
+      var units = row[10]
+      var formatPack = row[11]
+      var length = row[12]
+      var width = row[13]
+      var height = row[14]
+      var weight = row[15]
+      var explicit = row[16]
+      var releasedate = row[17]
+      var presellDate = row[18]
+      var narrative = row[19]
+      var artwork = row[20]
+      var artistbio = row[21]
+      var boxlot = row[22]
+      var countryManuf = row[23]
+      var ppdUsa = row[24]
+      var unitsUsa = row[25]
+      var ppdUk = row[26]
+      var unitsUK = row[27]
+      var ppdAus = row[28]
+      var unitsAus = row[29]
+      var ppdEU = row[30]
+      var unitsEU = row[31]
+      var tracks = row[32]
+
+      //create Array for each territory
+
+      var usa = ["filler",vendor,label,catalogNum,formatPack,artist,title,upc,"wholesalecost",ppdUsa,releasedate,presellDate,primaryGenre,explicit,boxlot,units,formatPack,unitsUsa,"",tracks]
+      var uk = ["filler","labelcode",label,"sublabel",upc,catalogNum,artist,title,artist,title,releasedate,primaryGenre,secondGenre,format,"formatform",units,formatPack,weight,length,width,height,explicit,narrative,ppdUk,"buy price",artwork,"variant"]
+      var eu = ["filler",upc,artist,"firstname","lastname",title,"prefix","suffix",label,format,units,boxlot,"language",primaryGenre,releasedate,presellDate,ppdEU,countryManuf,artwork,"album info",artistbio,"composer",formatPack,weight,length+"x"+height+"x"+width]
+      var aus = ["filler",label,catalogNum,upc,artist,title,primaryGenre,format,ppdAus,releasedate,narrative,artwork,"audiolink"]
+
+//US
+  var destRange = SpreadsheetApp.openById(copyID).getSheetByName("AMPED")
+  var Avals = destRange.getRange("A1:A").getValues();
+  var Alast = Avals.filter(String).length+1;
+  var headerRangeUS = destRange.getRange(1,1,1,30).getValues();
+  for(var x=1; x < headerRangeUS[0].length;x++){
+    destRange.getRange(Alast,x).setValue(usa[x]);
+  }
+
+//UK
+  var destRange = SpreadsheetApp.openById(copyID).getSheetByName("PROPER")
+  var Avals = destRange.getRange("A1:A").getValues();
+  var Alast = Avals.filter(String).length+1;
+  var headerRangeUK = destRange.getRange(1,1,1,30).getValues();
+  for(var y=1; y < headerRangeUK[0].length;y++){
+    destRange.getRange(Alast,y).setValue(uk[y]);
+  }
+//MGM
+  var destRange = SpreadsheetApp.openById(copyID).getSheetByName("MGM")
+  var Avals = destRange.getRange("L1:L").getValues();
+  var Alast = Avals.filter(String).length+1;
+  var headerRangeAus = destRange.getRange(2,1,2,30).getValues();
+  for(var z=1; z < headerRangeAus[0].length; z++){
+    destRange.getRange(Alast,z).setValue(aus[z]);
+  }
+  
+//EU
+  var destRange = SpreadsheetApp.openById(copyID).getSheetByName("BERTUS")
+  var Avals = destRange.getRange("A1:A").getValues();
+  var Alast = Avals.filter(String).length+1;
+  var headerRangeEU = destRange.getRange(1,1,1,30).getValues();
+  for(var x=1; x < headerRangeEU[0].length;x++){
+    destRange.getRange(Alast,x).setValue(eu[x]); 
+  }
+  
+    }})
+  //separate the files
+  var distributor = ["AMPED","BERTUS","PROPER","MGM"]
+  for (var e = 0; e<distributor.length;e++){
+    var destFile = DriveApp.getFilesByName(date + " - " + clientName + " - "+ distributor[e]);
+    if (destFile.hasNext() ) //check if file already exists
+    {
+      Logger.log("File exists");
+    }
+    else
+    {
+      //splitting up files
+      var newFolder = DriveApp.getFolderById("1yjKhK-FXpqDUXKuGTjfRhcGSK7djGGIS");
+      var ingestionFile = DriveApp.getFileById(copyID).makeCopy(date + " - " + clientName + " - "+ distributor[e],newFolder)
+      var ingestionFileID = ingestionFile.getId();
+      var ingestionFile2 = DriveApp.getFileById(ingestionFileID);
+      ingestionFile2.moveTo(newFolder);
+     var fileOpenned = SpreadsheetApp.openById(ingestionFileID);
+      switch (distributor[e]) {
+        case 'AMPED':
+          fileOpenned.deleteSheet(SpreadsheetApp.openById(ingestionFileID).getSheetByName('PROPER'));
+          fileOpenned.deleteSheet(SpreadsheetApp.openById(ingestionFileID).getSheetByName('MGM'));
+          fileOpenned.deleteSheet(SpreadsheetApp.openById(ingestionFileID).getSheetByName('BERTUS'));
+          break;
+        case 'BERTUS':
+          fileOpenned.deleteSheet(SpreadsheetApp.openById(ingestionFileID).getSheetByName('PROPER'));
+          fileOpenned.deleteSheet(SpreadsheetApp.openById(ingestionFileID).getSheetByName('MGM'));
+          fileOpenned.deleteSheet(SpreadsheetApp.openById(ingestionFileID).getSheetByName('AMPED'));
+          break;
+          case 'MGM':
+          fileOpenned.deleteSheet(SpreadsheetApp.openById(ingestionFileID).getSheetByName('AMPED'));
+          fileOpenned.deleteSheet(SpreadsheetApp.openById(ingestionFileID).getSheetByName('PROPER'));
+          fileOpenned.deleteSheet(SpreadsheetApp.openById(ingestionFileID).getSheetByName('BERTUS'));
+          break;
+        case 'PROPER':
+          fileOpenned.deleteSheet(SpreadsheetApp.openById(ingestionFileID).getSheetByName('AMPED'));
+          fileOpenned.deleteSheet(SpreadsheetApp.openById(ingestionFileID).getSheetByName('MGM'));
+          fileOpenned.deleteSheet(SpreadsheetApp.openById(ingestionFileID).getSheetByName('BERTUS'));
+          break;
+        default:
+          break;
+      }
+    
+    }}
+     var name = ["Michael & Pip","Jasper","Gray","Graeme"]
+      var email = ["Michael@ampeddistribution.com,Pip@ampeddistribution.com","jasper.frank@bertus.com","gray.warner@propermusicgroup.com","Graeme@thegroovemerchants.com"]
+       var distributor = ["AMPED","BERTUS","PROPER","MGM"]
+      for(var x=0;x<name.length;x++){
+      var file = DriveApp.getFilesByName(date + " - " + clientName + " - "+ distributor[x]);
+       if (file.hasNext()) {
+         var fileID = file.next().getId()
+         var fileUrl = DriveApp.getFileById(fileID).getUrl();
+         var filePermission = DriveApp.getFileById(fileID)
+         filePermission.setSharing(DriveApp.Access.ANYONE, DriveApp.Permission.VIEW)
+    GmailApp.createDraft(email[x], `New Product: ${clientName} - ${distributor[x]} - ${date}`,
+`Hi ${name[x]}!
+
+Happy to announce another new product from FUGA, please see the overview here, and attached as a PDF: 
+
+drive.google.com/open?id=${fileID}
+
+Let me know if there are any questions or if anything is unclear. 
+
+All the best,
+
+Team Physical FUGA.`)
+
+}}}
